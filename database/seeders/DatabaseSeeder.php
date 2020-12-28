@@ -1,6 +1,7 @@
 <?php
 
-use App\Post;
+namespace Database\Seeders;
+
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -12,11 +13,6 @@ class DatabaseSeeder extends Seeder
      */
     public function run()
     {
-        Post::create([
-            'title' => 'Somthing innnnnnn',
-            'body' => 'ssssssssssssssssssssssssss',
-        ]);
-
-        // $this->call(UsersTableSeeder::class);
+         \App\Models\Post::factory(10)->create();
     }
 }
