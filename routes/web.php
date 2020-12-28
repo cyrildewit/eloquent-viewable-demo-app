@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Post;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -14,5 +15,15 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/', function () {
-    return view('home.index');
+    return view('welcome');
+});
+
+Route::get('/posts', function () {
+    return Post::all();
+});
+
+Route::get('/posts/{post}', function (Post $post) {
+    views($post)->record();
+
+    return $post;
 });
