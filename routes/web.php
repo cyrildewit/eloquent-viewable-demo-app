@@ -23,7 +23,11 @@ Route::get('/posts', function () {
 });
 
 Route::get('/posts/{post}', function (Post $post) {
-    views($post)->record();
+    views($post)
+        ->extraAttributes([
+            'meta' => 'Something',
+        ])
+        ->record();
 
     return $post;
 });

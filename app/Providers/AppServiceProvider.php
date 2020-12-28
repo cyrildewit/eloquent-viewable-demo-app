@@ -13,7 +13,15 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        //
+        $this->app->bind(
+            \CyrildeWit\EloquentViewable\Contracts\View::class,
+            \App\Models\View::class
+        );
+
+        $this->app->bind(
+            \CyrildeWit\EloquentViewable\Contracts\Views::class,
+            \App\Services\Views\Views::class
+        );
     }
 
     /**
