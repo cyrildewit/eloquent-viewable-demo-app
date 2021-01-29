@@ -46,6 +46,7 @@ class CreateViewsTable extends Migration
             $table->morphs('viewable');
             $table->text('visitor')->nullable();
             $table->string('collection')->nullable();
+            $table->schemalessAttributes('extra_attributes');
             $table->timestamp('viewed_at')->useCurrent();
         });
     }
