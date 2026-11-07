@@ -1,19 +1,62 @@
-version: "3.8"
+x-php: &php
+  build:
+    context: ./
+    dockerfile: "./docker/php/Dockerfile"
+    args:
+      - BUILD_UID=${DOCKER_UID:-1000}
+      - BUILD_GID=${DOCKER_GID:-1000}
+  image: evd-php:latest
+  working_dir: /var/www/html
+  # Real environment variables win over .env, so the stack works with any .env that has an APP_KEY.
+  environment:
+    APP_NAME: Inkwell
+    APP_URL: https://eloquent-viewable-demo.localhost
+    DB_CONNECTION: mysql
+    DB_HOST: mariadb
+    DB_PORT: 3306
+    DB_DATABASE: eloquent-viewable_demo
+    DB_USERNAME: homestead
+    DB_PASSWORD: secret
+    REDIS_CLIENT: phpredis
+    REDIS_HOST: redis
+    REDIS_PORT: 6379
+    CACHE_STORE: redis
+    SESSION_DRIVER: redis
+    QUEUE_CONNECTION: redis
+    MAIL_MAILER: smtp
+    MAIL_HOST: mailhog
+    MAIL_PORT: 1025
+  volumes:
+    - ./:/var/www/html:cached
+    # The unreleased 9.x package, linked through the path repository in composer.json.
+    - ../eloquent-viewable:/var/www/eloquent-viewable:cached
+    # Named, so the php and horizon containers share it: horizon:listen needs chokidar.
+    - node_modules:/var/www/html/node_modules
+    - /var/www/html/.git
+    - ./public:/var/www/html/public:delegated
+
 services:
   php:
+    <<: *php
     container_name: evd-php
-    build:
-      context: ./
-      dockerfile: "./docker/php/Dockerfile"
-      args:
-        - BUILD_UID=${DOCKER_UID}
-        - BUILD_GID=${DOCKER_GID}
-    working_dir: /var/www/html
-    volumes:
-      - ./:/var/www/html:cached
-      - /var/www/html/node_modules
-      - /var/www/html/.git
-      - ./public:/var/www/html/public:delegated
+
+  # Laravel Horizon: works the redis queue (queued views, episode plays) and
+  # serves the dashboard at /horizon. horizon:listen restarts the workers when
+  # app code or the linked package changes.
+  horizon:
+    <<: *php
+    container_name: evd-horizon
+    command: ["php", "artisan", "horizon:listen"]
+    restart: unless-stopped
+    depends_on: [php, mariadb, redis]
+
+  # Runs routes/console.php: views:maintain, views:flush, views:pairs and views:detect-spikes.
+  scheduler:
+    <<: *php
+    container_name: evd-scheduler
+    command: ["php", "artisan", "schedule:work"]
+    restart: unless-stopped
+    depends_on: [php, mariadb, redis]
 
   nginx:
     container_name: evd-nginx
@@ -32,13 +75,13 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=traefik-gateway"
-      - "traefik.http.routers.evd-nginx.rule=Host(`eloquent-viewable-demo.test`) || Host(`www.eloquent-viewable-demo.test`)"
+      - "traefik.http.routers.evd-nginx.rule=Host(`eloquent-viewable-demo.localhost`) || Host(`www.eloquent-viewable-demo.localhost`)"
       - "traefik.http.routers.evd-nginx.entrypoints=https"
       - "traefik.http.routers.evd-nginx.tls=true"
 
   mariadb:
     container_name: evd-mariadb
-    image: mariadb:10.4
+    image: mariadb:11
     command: --init-file /data/application/init.sql
     volumes:
       - ./docker/mariadb/sql/init.sql:/data/application/init.sql
@@ -53,7 +96,7 @@ services:
       - 127.0.0.1:34063:3306
 
   redis:
-    image: redis:4-alpine
+    image: redis:7-alpine
     container_name: evd-redis
     ports:
       - 6379:6379
@@ -70,11 +113,13 @@ services:
       - "traefik.enable=true"
       - "traefik.docker.network=traefik-gateway"
       - "traefik.http.services.evd-mailhog.loadbalancer.server.port=8025"
-      - "traefik.http.routers.evd-mailhog.rule=Host(`mailhog.eloquent-viewable-demo.test`)"
+      - "traefik.http.routers.evd-mailhog.rule=Host(`mailhog.eloquent-viewable-demo.localhost`)"
       - "traefik.http.routers.evd-mailhog.entrypoints=https"
       - "traefik.http.routers.evd-mailhog.tls=true"
 
 volumes:
+  node_modules:
+    driver: local
   mariadb:
     driver: local
   redis:
@@ -84,5 +129,5 @@ volumes:
 # docker network create traefik-gateway
 networks:
   traefik-gateway:
-    external:
-      name: traefik-gateway
+    name: traefik-gateway
+    external: true
