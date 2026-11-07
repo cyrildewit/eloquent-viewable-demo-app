@@ -1,19 +1,53 @@
 <?php
 
-use Illuminate\Foundation\Inspiring;
-use Illuminate\Support\Facades\Artisan;
+use App\Demo\Autopilot;
+use App\Demo\TrafficSimulator;
+use Illuminate\Support\Facades\Schedule;
 
 /*
 |--------------------------------------------------------------------------
-| Console Routes
+| The schedule of a production app using Eloquent Viewable
 |--------------------------------------------------------------------------
 |
-| This file is where you may define all of your Closure based console
-| commands. Each Closure is bound to a command instance allowing a
-| simple approach to interacting with each command's IO methods.
+| The evd-scheduler container runs these. Maintenance only runs while the
+| autopilot is on (a switch on the Console page), so the seeded data stays
+| put until you choose to change it. views:doctor still sees every command
+| as scheduled.
 |
 */
 
-Artisan::command('inspire', function () {
-    $this->comment(Inspiring::quote());
-})->purpose('Display an inspiring quote');
+// Roll up, anonymise, prune and recount counter columns.
+Schedule::command('views:maintain --max-seconds=600')
+    ->hourly()
+    ->onOneServer()
+    ->withoutOverlapping()
+    ->when(fn (): bool => Autopilot::enabled());
+
+// Compare the last closed hour with the same hour on past weeks.
+Schedule::command('views:detect-spikes')
+    ->hourly()
+    ->onOneServer()
+    ->when(fn (): bool => Autopilot::enabled());
+
+// Rewrite the pairs table alsoViewed() and recommended() read.
+Schedule::command('views:pairs')
+    ->hourlyAt(30)
+    ->onOneServer()
+    ->when(fn (): bool => Autopilot::enabled());
+
+// Land views buffered in Redis. Not tied to the autopilot: a buffered view
+// should never wait. The database store has nothing to flush and says so
+// with an error, so it only runs with VIEWABLE_STORE=redis.
+Schedule::command('views:flush')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->when(fn (): bool => config('eloquent-viewable.recording.store.driver') === 'redis');
+
+// Horizon's throughput and runtime graphs are built from these snapshots.
+Schedule::command('horizon:snapshot')->everyFiveMinutes();
+
+// A trickle of readers, so the live counters and trending move on their own.
+Schedule::call(fn () => app(TrafficSimulator::class)->recent(views: mt_rand(4, 12), minutes: 1))
+    ->name('demo:trickle')
+    ->everyMinute()
+    ->when(fn (): bool => Autopilot::enabled());
