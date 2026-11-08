@@ -80,7 +80,32 @@ prunes views older than 180 days, which takes a while on millions of rows. Pick 
 several runs. Until then, every count over a long period reads the whole views table.
 
 **Every page shows its cost** in the footer: the number of queries, the time the database spent on them and the
-time of the whole request. Compare a page before and after `views:maintain`, and on a cold and a warm cache.
+time of the whole request. Compare a page before and after `views:maintain`, and on a cold and a warm cache. Debugbar
+records every query with a backtrace, which adds to those numbers; set `DEBUGBAR_ENABLED=false` in `.env` for honest
+timings, and the footer says when it is collecting.
+
+### Tuned for large tables
+
+The demo runs the setup the package recommends once the views table holds millions of rows:
+
+- **Every dimension the stats pages split by is folded** into the rollups, so a count by source, medium, campaign,
+  device, country, referrer host or plan reads a few rollup rows per day instead of every view.
+- **The hour tier** folds closed hours for 35 days, so trending, rising, the spike baselines and today's closed hours
+  come from the rollups too. Only the current hour reads the views table.
+- **List sorts use counter columns.** "Most read this week", "Popular on Google" and "1,000+ club" sort on
+  `views_last_week`, `google_views_30d` and `total_views`, which `views:recount` writes. "This week, counted live" runs
+  `orderByViews()` on every request instead, for comparison.
+- **Repeated reads are remembered,** in minutes: `remember(10)` for rising and recommendations, `remember(1)` for an
+  article's view count, 15 minutes for the Stats page.
+- **The Stats page is computed ahead of its visitors.** `demo:warm` runs every five minutes from the scheduler and
+  fills the cache for every period the page links to. It stands aside while a Console command or the package's
+  maintenance lock is active, and on a large table with nothing folded yet: there every read scans the views table,
+  each fold step forgets the answers again, and warming only slows the fold down.
+- **MariaDB gets a 4 GB buffer pool,** set with `MARIADB_BUFFER_POOL` in `docker-compose.yml`. The default 128 MB
+  cannot hold the indexes of a table this size, so most reads would come from disk.
+
+Unique visitors, new and returning visitors, and counts that combine two dimensions still read the views table: rollups
+cannot add up visitors across buckets exactly, and keep one dimension at a time.
 
 ### The Console at scale
 
@@ -90,6 +115,59 @@ streams the output as it is written, and recent runs stay one click away. Each r
 
 The figures on the Console come from a snapshot that `demo:examine` takes after every run, because counting tens of
 millions of rows takes seconds. "Refresh the snapshot" takes a new one.
+
+## Performance at 21 million views
+
+Measured on this demo with 21 million views over three years, on a laptop: Docker, one MariaDB 11.8 with a 4 GB buffer
+pool. Reads are timed without `remember()`, so every number is what an uncached request pays.
+
+**Reads**, before and after the first `views:maintain` folded the rollups and pruned views older than 180 days:
+
+| Read                                       | Raw views table | With rollups |
+|--------------------------------------------|----------------:|-------------:|
+| One post, all-time count                   | 103 ms          | 3.5 ms       |
+| One post, 2 years by month                 | 599 ms          | 17 ms        |
+| One post, views by source over a year      | 1.8 s           | 4 ms         |
+| All posts, 2 years by month                | 16 s            | 0.6 s        |
+| All posts, views by source over a year     | 23 s            | 0.2 s        |
+| Top 10 and trending                        | 1.6–2.4 s       | 0.12–0.15 s  |
+| Unique visitors of all posts, 30 days      | 4.3 s           | 2.9 s        |
+| `orderByViews()` and `whereViewsCount()`   | 1.8 s           | 0.8 s        |
+| `recommended()` over 30 days               | 19 s            | 20 s         |
+
+Every count that does not depend on visitors came out identical after 12 million views were pruned. Unique visitors,
+returning visitors, counts that combine two dimensions, the view scopes and recommendations read the views table by
+design; cache them, or compute them in a scheduled job.
+
+**Pages**, with the demo's caching and the Stats page warmed by `demo:warm`:
+
+| Page                 | Cold   | Warm    |
+|----------------------|-------:|--------:|
+| Front page           | 0.18 s | 0.04 s  |
+| An article           | 0.12 s | 0.03 s  |
+| Stats for 7 days     | 8.5 s  | 0.07 s  |
+
+**Recording and upkeep:**
+
+| Work                                                    | Time                        |
+|---------------------------------------------------------|-----------------------------|
+| Record a view, during the request or queued             | 1.7–2.2 ms                  |
+| 50 views a second through the queue, three workers      | no backlog, no failed jobs  |
+| First `views:maintain` over 21 million views            | 2 h                         |
+| Hourly `views:maintain` after that                      | 23 s                        |
+| `views:pairs`, from 90 days of views                    | 53 s                        |
+| `views:detect-spikes`                                   | under 1 s                   |
+
+**Storage:** 411 bytes a view with the demo's indexes. After pruning, 8.8 million views remain, next to 3.9 million
+rollup rows taking about 900 MB, two thirds of them in the hour tier of the dimension rollups. Deleting views does not
+shrink an InnoDB table; reclaim the space with `OPTIMIZE TABLE` or by partitioning.
+
+Run the same measurements on your own data, and compare two runs, with:
+
+```bash
+docker exec evd-php php artisan demo:benchmark before
+docker exec evd-php php artisan demo:benchmark after --compare=before
+```
 
 ## Simulating traffic through the package
 
@@ -187,7 +265,7 @@ use.
 | `VIEWABLE_QUEUE`           | `false`  | `true` hands every insert to Horizon                                       |
 | `VIEWABLE_SOURCE`          | `rollup` | `database` reads only the views table                                      |
 | `VIEWABLE_PAIRS`           | `true`   | `false` makes `alsoViewed()` and `recommended()` read the views table      |
-| `VIEWABLE_HOUR_TIER`       | `false`  | `true` adds a 35-day hour tier; the first maintenance run then takes minutes |
+| `VIEWABLE_HOUR_TIER`       | `true`   | `false` drops the 35-day hour tier that answers trending, rising and spikes |
 | `VIEWABLE_PRIVACY_SIGNALS` | `false`  | `true` honours `DNT` and `Sec-GPC`, which Brave sends by default           |
 
 ## What the demo configures
