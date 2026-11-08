@@ -13,7 +13,6 @@ use CyrildeWit\EloquentViewable\Dimensions\Arrival;
 use CyrildeWit\EloquentViewable\Recording\Guards\EnforceCooldown;
 use CyrildeWit\EloquentViewable\Recording\Guards\IgnoreBursts;
 use CyrildeWit\EloquentViewable\Recording\Guards\ThrottleVisitors;
-use CyrildeWit\EloquentViewable\Support\Duration;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
@@ -123,7 +122,7 @@ class SimulateTraffic extends Command
     private function live(TrafficSimulator $traffic): int
     {
         $rate = max(1, (int) $this->option('rate'));
-        $seconds = Duration::tryParse((string) $this->option('duration'))?->toInterval()->totalSeconds ?? 600;
+        $seconds = $this->seconds((string) $this->option('duration'));
         $until = time() + (int) $seconds;
 
         $this->components->info(sprintf(
@@ -149,7 +148,7 @@ class SimulateTraffic extends Command
             for ($round = 0; $recorded < $rate && $round < 10 && ! $this->stop; $round++) {
                 $traffic->live($rate - $recorded, function (array $view) use ($pending, &$sequence): void {
                     $pending->insert([$view['ts'], $sequence++, $view]);
-                });
+                }, $rate);
 
                 $recorded += $this->drain($pending);
             }
@@ -175,6 +174,23 @@ class SimulateTraffic extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * 90s, 10m or 10min, 2h. Not the package's period shorthand, where `m`
+     * means months.
+     */
+    private function seconds(string $duration): int
+    {
+        if (preg_match('/^(\d+)\s*(s|m|min|h)$/', trim($duration), $match) !== 1) {
+            return 600;
+        }
+
+        return (int) $match[1] * match ($match[2]) {
+            's' => 1,
+            'h' => 3_600,
+            default => 60,
+        };
     }
 
     /**

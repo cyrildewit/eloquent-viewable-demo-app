@@ -259,12 +259,14 @@ final class TrafficSimulator
      *
      * @param  Closure(array<string, mixed>): void  $sink
      */
-    public function live(int $views, Closure $sink): void
+    public function live(int $views, Closure $sink, int $rate = 20): void
     {
         $this->load();
 
+        // Enough visitors that one rarely opens the same piece twice within
+        // the ten minute cooldown: about ten minutes of traffic.
         if ($this->visitors === []) {
-            $this->makeVisitors(30, 3_000);
+            $this->makeVisitors(30, max(3_000, $rate * 600));
         }
 
         $now = time();
