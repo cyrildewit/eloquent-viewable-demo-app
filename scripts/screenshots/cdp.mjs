@@ -62,5 +62,5 @@ export async function shot(name, { width = 1440, height = null, maxHeight = 2600
     console.log(`${name}.png ${width}x${h} (page ${full}px)`);
 }
 
-export { evaluate, sleep };
+export { evaluate, sleep, send };
 export const close = () => { ws.close(); chrome.kill(); };
