@@ -17,7 +17,7 @@
 
         <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
             <div class="space-y-6">
-                <x-panel title="Recommended for you, and why" call="$user->recommended(Post::class, limit: 6, period: Period::pastDays(90))">
+                <x-panel title="Recommended for you, and why" call="$user->recommended(Post::class, limit: 6, period: Period::pastDays(30))">
                     @if ($recommended->isEmpty())
                         <p class="text-sm text-stone-500">Nothing yet. A recommendation needs {{ config('eloquent-viewable.querying.also_viewed.minimum_visitors') }} other visitors who read the same thing as you. Read a few posts and come back.</p>
                     @else
@@ -37,7 +37,7 @@
                     @endif
                     <div class="mt-4 rounded-lg bg-stone-50 px-3 py-2.5 text-xs text-stone-600">
                         The same list as a query scope, so it paginates and filters like any query:
-                        <x-call class="mt-1" code="Post::published()->recommendedFor($user, period: Period::pastDays(90))->limit(3)->get()" />
+                        <x-call class="mt-1" code="Post::published()->recommendedFor($user, period: Period::pastDays(30))->limit(3)->get()" />
                         <p class="mt-1">{{ $scoped->map(fn ($p) => $p->title.' ('.Number::format($p->recommendation_score, maxPrecision: 3).')')->implode(' · ') ?: 'Empty.' }}</p>
                     </div>
                 </x-panel>

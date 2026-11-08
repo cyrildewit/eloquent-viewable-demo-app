@@ -21,7 +21,7 @@
             </x-panel>
 
             <aside class="space-y-6">
-                <x-panel title="Recommended for this browser" call="views(Post::class)->recommended(4)">
+                <x-panel title="Recommended for this browser" call="views(Post::class)->period(Period::pastDays(30))->remember(10)->recommended(4)">
                     @forelse ($recommended as $item)
                         <a href="{{ route('posts.show', $item->viewable) }}" class="block py-1.5 text-sm">
                             <span class="font-medium hover:text-accent">{{ $item->viewable->title }}</span>

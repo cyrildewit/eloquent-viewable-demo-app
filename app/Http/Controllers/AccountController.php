@@ -28,7 +28,7 @@ class AccountController extends Controller
                 'visitorId' => $visitorId,
                 'history' => View::query()->byVisitor($visitorId)->with('viewable')->latest('viewed_at')->limit(12)->get(),
                 'total' => View::query()->byVisitor($visitorId)->count(),
-                'recommended' => views(Post::class)->recommended(4),
+                'recommended' => views(Post::class)->period(Period::pastDays(30))->remember(10)->recommended(4),
                 'unread' => Post::query()->published()->whereNotViewedByVisitor($visitorId)->latest('published_at')->limit(4)->get(),
             ]);
         }
@@ -38,8 +38,8 @@ class AccountController extends Controller
             'visitorId' => $visitorId,
             'history' => $user->viewed()->with('viewable')->paginate(12),
             'monthly' => views(Post::class)->viewedBy($user)->period(Period::pastDays(30))->count(),
-            'recommended' => $user->recommended(Post::class, limit: 6, period: Period::pastDays(90)),
-            'scoped' => Post::query()->published()->recommendedFor($user, period: Period::pastDays(90))->limit(3)->get(),
+            'recommended' => $user->recommended(Post::class, limit: 6, period: Period::pastDays(30)),
+            'scoped' => Post::query()->published()->recommendedFor($user, period: Period::pastDays(30))->limit(3)->get(),
             'unread' => Post::query()->published()->whereNotViewedBy($user)->latest('published_at')->limit(4)->get(),
             'readThisWeek' => Post::query()->published()->whereViewedBy($user, Period::pastDays(7))->count(),
         ]);

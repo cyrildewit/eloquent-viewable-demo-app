@@ -36,7 +36,7 @@
                 </div>
 
                 <x-panel class="mt-10" title="Recommended for {{ auth()->user()?->name ?? 'you' }}"
-                         :call="auth()->check() ? '$user->recommended(Post::class, limit: 4, period: Period::pastDays(90))' : 'views(Post::class)->period(Period::pastDays(90))->recommended(4)'">
+                         call="views(Post::class)->viewedBy($user)->period(Period::pastDays(30))->remember(10)->recommended(4)">
                     <x-slot:actions><a href="{{ route('account') }}" class="text-xs font-medium text-accent">Why these? →</a></x-slot:actions>
                     @if ($recommended->isEmpty())
                         <p class="mb-4 rounded-lg bg-stone-50 px-3 py-2 text-sm text-stone-600">
@@ -78,7 +78,7 @@
                 </x-panel>
 
                 @if ($rising->count())
-                    <x-panel title="Rising against yesterday" call="views(Post::class)->period(Period::pastDays(1))->rising(3)">
+                    <x-panel title="Rising against yesterday" call="views(Post::class)->period(Period::pastDays(1))->remember(10)->rising(3)">
                         <x-ranking :ranking="$rising" score />
                     </x-panel>
                 @endif

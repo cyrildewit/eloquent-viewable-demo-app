@@ -18,9 +18,13 @@ class HomeController extends Controller
         // Recommendations are personal: for a reader from their account, for
         // a guest from the visitor cookie. An empty list is a valid answer,
         // so fall back to what is trending.
-        $recommended = $user
-            ? $user->recommended(Post::class, limit: 4, period: Period::pastDays(90))
-            : views(Post::class)->period(Period::pastDays(90))->recommended(4);
+        // Thirty days of history is the better signal and reads far fewer
+        // rows. Remembered per reader for ten minutes.
+        $recommended = views(Post::class)
+            ->viewedBy($user)
+            ->period(Period::pastDays(30))
+            ->remember(10)
+            ->recommended(4);
 
         $episodes = Episode::query()->published()->latest('published_at')->limit(3)->get();
 
@@ -29,10 +33,10 @@ class HomeController extends Controller
             'hot' => Post::query()->published()->with('author')->orderByHot()->limit(7)->get(),
             'trending' => views(Post::class)->remember(5)->trending(5),
             'mostRead' => Views::period(Period::pastDays(7))->remember(10)->top(5),
-            'rising' => views(Post::class)->period(Period::pastDays(1))->rising(3, minimum: 5),
+            'rising' => views(Post::class)->period(Period::pastDays(1))->remember(10)->rising(3, minimum: 5),
             'live' => rescue(fn () => Views::live()->top(5), null, false),
             'recommended' => $recommended,
-            'recommendedFallback' => $recommended->isEmpty() ? views(Post::class)->trending(4) : null,
+            'recommendedFallback' => $recommended->isEmpty() ? views(Post::class)->remember(5)->trending(4) : null,
             'episodes' => $episodes,
             'plays' => Views::forViewables($episodes)->collection('plays')->remember(10)->counts(),
         ]);
