@@ -82,7 +82,10 @@ services:
   mariadb:
     container_name: evd-mariadb
     image: mariadb:11
-    command: --init-file /data/application/init.sql
+    # The InnoDB buffer pool caches table and index pages in memory. The
+    # default of 128 MB is far too small for a views table of millions of
+    # rows; 4 GB holds the hot part of a 20 million view table.
+    command: --init-file /data/application/init.sql --innodb-buffer-pool-size=${MARIADB_BUFFER_POOL:-4G}
     volumes:
       - ./docker/mariadb/sql/init.sql:/data/application/init.sql
       - mariadb:/var/lib/mysql
