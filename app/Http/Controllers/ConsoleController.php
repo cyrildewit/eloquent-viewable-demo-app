@@ -32,8 +32,8 @@ class ConsoleController extends Controller
             'options' => ['--dry-run' => 'flag', '--max-seconds' => ['', '30', '120', '600']],
         ],
         'views:rollup' => [
-            'about' => 'Folds the views of closed buckets into the hour, day and month tiers, for the built-in rollup, the newsletter rollup and the source, device and country dimensions.',
-            'options' => ['--dry-run' => 'flag', '--tier' => ['', 'day', 'month', 'hour'], '--rollup' => ['', 'views', 'newsletter', 'views:source', 'views:device', 'views:country'], '--from' => 'date', '--max-seconds' => ['', '30', '120', '600']],
+            'about' => 'Folds the views of closed buckets into the hour, day and month tiers, for the built-in rollup, the newsletter rollup and every dimension the stats pages split by.',
+            'options' => ['--dry-run' => 'flag', '--tier' => ['', 'day', 'month', 'hour'], '--rollup' => ['', 'views', 'newsletter', 'views:source', 'views:medium', 'views:campaign', 'views:device', 'views:country', 'views:referrer_host', 'views:plan'], '--from' => 'date', '--max-seconds' => ['', '30', '120', '600']],
         ],
         'views:anonymise' => [
             'about' => 'Re-hashes the visitor under a salt per day and clears the viewer and context of views older than the retention age. Never past the last folded bucket.',

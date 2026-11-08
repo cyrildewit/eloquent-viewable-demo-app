@@ -94,12 +94,14 @@ class DemoTest extends TestCase
         $this->get(route('posts.stats', [Post::query()->published()->first(), '7d']))->assertOk();
     }
 
-    public function test_the_stats_explain_reads_the_rollups_cannot_answer_once_views_are_pruned(): void
+    public function test_only_reads_the_rollups_cannot_answer_are_refused_once_views_are_pruned(): void
     {
         Artisan::call('views:rollup');
         Artisan::call('views:prune', ['--older-than' => '20d']);
 
-        $this->get(route('stats', '3m'))->assertOk()->assertSee('Not answerable for this period');
+        // Every dimension is folded, so a count by one is answered from the
+        // rollups; only counts that combine two dimensions are refused.
+        $this->get(route('stats', '3m'))->assertOk()->assertDontSee('Not answerable for this period')->assertSee('Two dimensions at once');
         $this->get(route('posts.stats', [Post::query()->published()->first(), '3m']))->assertOk()->assertSee('Not answerable for this period');
     }
 

@@ -608,12 +608,11 @@ return [
              * `['day' => '2y', 'month' => null]`.
              */
             'tiers' => [
-                // The hour tier serves hourly trending and spike baselines once
-                // views are pruned. It is opt-in in this demo: the first fold
-                // walks every hour back to the oldest view, two years of them,
-                // only to drop all but the last 35 days, which turns the first
-                // views:maintain from seconds into minutes.
-                ...(env('VIEWABLE_HOUR_TIER', false) ? ['hour' => '35d'] : []),
+                // Serves hourly trending, rising and the spike baselines from
+                // the rollups, and folds today's closed hours, so only the
+                // current hour is read from the views table. Kept as long as
+                // the four weeks spikes compare with, plus a week.
+                ...(env('VIEWABLE_HOUR_TIER', true) ? ['hour' => '35d'] : []),
                 'day' => '2y',
                 'month' => null,
             ],
@@ -645,11 +644,21 @@ return [
              */
             'dimensions' => [
 
+                // Every dimension the stats pages split by, so each one is
+                // answered from the rollups once its days are folded.
                 'source',
+
+                'medium',
+
+                'campaign',
 
                 'device',
 
                 'country',
+
+                'referrer_host',
+
+                'plan',
 
             ],
 
