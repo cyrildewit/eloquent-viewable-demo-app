@@ -45,6 +45,12 @@
 
     .call {
         @apply block max-w-full overflow-x-auto whitespace-nowrap font-mono text-[0.7rem] leading-relaxed text-stone-500;
+        /* JetBrains Mono draws -> as an arrow, which is not what PHP code looks like. */
+        font-variant-ligatures: none;
+    }
+
+    code, pre {
+        font-variant-ligatures: none;
     }
 
     .call .fn {
