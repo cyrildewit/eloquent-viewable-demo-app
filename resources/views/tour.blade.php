@@ -46,7 +46,7 @@
     <div class="mx-auto max-w-7xl px-4 pt-10 sm:px-6">
         <p class="eyebrow">Tour</p>
         <h1 class="mt-1 max-w-3xl font-serif text-4xl font-semibold leading-tight tracking-tight">Every feature of Eloquent Viewable 9, and where to try it</h1>
-        <p class="mt-3 max-w-3xl text-stone-600">Inkwell is a small publication with two years of simulated traffic: {{ Number::format(DB::table('views')->count()) }} views of {{ \App\Models\Post::count() }} articles and {{ \App\Models\Episode::count() }} podcast episodes by {{ \App\Models\User::count() }} readers. Every panel in the app names the call it makes.</p>
+        <p class="mt-3 max-w-3xl text-stone-600">Inkwell is a small publication with simulated traffic: {{ Number::format(views(\App\Models\Post::class)->count() + views(\App\Models\Episode::class)->count()) }} views of {{ \App\Models\Post::count() }} articles and {{ \App\Models\Episode::count() }} podcast episodes by {{ \App\Models\User::count() }} readers. Every panel in the app names the call it makes.</p>
 
         <div class="mt-10 space-y-12">
             @foreach ($sections as $section => $items)
