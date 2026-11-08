@@ -113,6 +113,25 @@ class DemoTest extends TestCase
         $this->get(route('console'))->assertOk()->assertSee('Snapshot of the tables from')->assertSee('views:source');
     }
 
+    public function test_recommendations_are_worked_out_in_the_queue_and_shown_on_the_next_visit(): void
+    {
+        $chloe = User::query()->where('email', 'chloe@inkwell.test')->first();
+
+        // The queue runs jobs right away in tests, but the first page was
+        // already built without them.
+        $this->actingAs($chloe)->get('/')->assertOk()->assertSee('Working out your recommendations');
+        $this->actingAs($chloe)->get('/')->assertOk()->assertDontSee('Working out your recommendations');
+    }
+
+    public function test_a_guest_without_views_queues_no_recommendations(): void
+    {
+        \Illuminate\Support\Facades\Queue::fake();
+
+        $this->get('/')->assertOk()->assertDontSee('Working out your recommendations');
+
+        \Illuminate\Support\Facades\Queue::assertNothingPushed();
+    }
+
     public function test_the_lab_refuses_a_crawler(): void
     {
         $post = Post::query()->published()->first();

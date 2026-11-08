@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\ComputeRecommendations;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,6 +14,10 @@ class DemoLoginController extends Controller
     {
         Auth::login($user);
         $request->session()->regenerate();
+
+        // Start on this reader's recommendations right away, so the front
+        // page has them by the time it is opened.
+        ComputeRecommendations::dispatch($user->getKey(), null);
 
         return back()->with('status', "You are reading as <strong>{$user->name}</strong>. Views you record now carry <code>viewer_type = user</code> and <code>viewer_id = {$user->id}</code>.");
     }

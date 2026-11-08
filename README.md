@@ -95,8 +95,12 @@ The demo runs the setup the package recommends once the views table holds millio
 - **List sorts use counter columns.** "Most read this week", "Popular on Google" and "1,000+ club" sort on
   `views_last_week`, `google_views_30d` and `total_views`, which `views:recount` writes. "This week, counted live" runs
   `orderByViews()` on every request instead, for comparison.
-- **Repeated reads are remembered,** in minutes: `remember(10)` for rising and recommendations, `remember(1)` for an
-  article's view count, 15 minutes for the Stats page.
+- **Repeated reads are remembered,** in minutes: `remember(10)` for a guest's recommendations on the account page, `remember(1)`
+  for an article's view count, 15 minutes for the Stats page.
+- **The front page never waits.** Its shared panels are served stale for up to an hour while they recompute after
+  the response, through `Cache::flexible()`. Recommendations are worked out in the queue by
+  `App\Jobs\ComputeRecommendations`: a reader's first visit shows what is trending, the next one their list, and a
+  stale list is shown while it refreshes.
 - **The Stats page is computed ahead of its visitors.** `demo:warm` runs every five minutes from the scheduler and
   fills the cache for every period the page links to. It stands aside while a Console command or the package's
   maintenance lock is active, and on a large table with nothing folded yet: there every read scans the views table,

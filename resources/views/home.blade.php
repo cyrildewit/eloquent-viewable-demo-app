@@ -36,14 +36,26 @@
                 </div>
 
                 <x-panel class="mt-10" title="Recommended for {{ auth()->user()?->name ?? 'you' }}"
-                         call="views(Post::class)->viewedBy($user)->period(Period::pastDays(30))->remember(10)->recommended(4)">
+                         call="views(Post::class)->viewedBy($user)->period(Period::pastDays(30))->recommended(4) // in the queue, App\Jobs\ComputeRecommendations">
                     <x-slot:actions><a href="{{ route('account') }}" class="text-xs font-medium text-accent">Why these? →</a></x-slot:actions>
-                    @if ($recommended->isEmpty())
+                    @if ($recommended === null)
+                        <p class="mb-4 rounded-lg bg-accent-soft px-3 py-2 text-sm text-ink">
+                            Working out your recommendations in the background. They will be here on your next page view; meanwhile, what is trending:
+                        </p>
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            @foreach ($fallback as $entry)
+                                <a href="{{ route('posts.show', $entry->viewable) }}" class="flex gap-3">
+                                    <span class="size-12 shrink-0 rounded-lg" style="{{ $entry->viewable->cover() }}"></span>
+                                    <span class="text-sm font-medium leading-snug hover:text-accent">{{ $entry->viewable->title }}</span>
+                                </a>
+                            @endforeach
+                        </div>
+                    @elseif ($recommended->isEmpty())
                         <p class="mb-4 rounded-lg bg-stone-50 px-3 py-2 text-sm text-stone-600">
                             Nothing to recommend yet: {{ auth()->check() ? 'this reader has' : 'your browser has' }} no recent history that at least {{ config('eloquent-viewable.querying.also_viewed.minimum_visitors') }} other visitors share. Read a few posts, or sign in as Alice or Chloe from the menu. Meanwhile, what is trending:
                         </p>
                         <div class="grid gap-4 sm:grid-cols-2">
-                            @foreach ($recommendedFallback as $entry)
+                            @foreach ($fallback as $entry)
                                 <a href="{{ route('posts.show', $entry->viewable) }}" class="flex gap-3">
                                     <span class="size-12 shrink-0 rounded-lg" style="{{ $entry->viewable->cover() }}"></span>
                                     <span class="text-sm font-medium leading-snug hover:text-accent">{{ $entry->viewable->title }}</span>
@@ -67,18 +79,19 @@
             </div>
 
             <aside class="space-y-5">
-                <x-panel title="Trending now" call="views(Post::class)->remember(5)->trending(5)">
+                <x-panel title="Trending now" call="views(Post::class)->trending(5) // cached by App\Demo\FrontPage">
                     <x-ranking :ranking="$trending" score unit="views" />
                     <p class="mt-3 text-xs text-stone-500">The score weighs each view by its age, halving every {{ config('eloquent-viewable.querying.trending.half_life') }}. <a href="{{ route('stats') }}#curves" class="text-accent">Compare curves →</a></p>
+                    <p class="mt-1 text-xs text-stone-500">These panels were computed {{ \Carbon\Carbon::parse($at)->diffForHumans() }}. After ten minutes the next visitor still gets them at once, and they are recomputed after the response.</p>
                 </x-panel>
 
-                <x-panel title="Most read this week" call="Views::period(Period::pastDays(7))->top(5)">
+                <x-panel title="Most read this week" call="Views::period(Period::pastDays(7))->top(5) // cached by App\Demo\FrontPage">
                     <x-ranking :ranking="$mostRead" />
                     <p class="mt-3 text-xs text-stone-500">Across every model type: articles and episodes in one list.</p>
                 </x-panel>
 
                 @if ($rising->count())
-                    <x-panel title="Rising against yesterday" call="views(Post::class)->period(Period::pastDays(1))->remember(10)->rising(3)">
+                    <x-panel title="Rising against yesterday" call="views(Post::class)->period(Period::pastDays(1))->rising(3) // cached by App\Demo\FrontPage">
                         <x-ranking :ranking="$rising" score />
                     </x-panel>
                 @endif

@@ -2,8 +2,12 @@
 
 namespace App\Console\Commands;
 
+use App\Demo\FrontPage;
 use App\Demo\Runs;
 use App\Http\Controllers\StatsController;
+use App\Jobs\ComputeRecommendations;
+use App\Models\User;
+use CyrildeWit\EloquentViewable\Models\View;
 use CyrildeWit\EloquentViewable\Support\Period;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
@@ -11,8 +15,9 @@ use Illuminate\Support\Facades\DB;
 use Throwable;
 
 /**
- * Fills the cache the Stats page reads, for every period it links to, so no
- * visitor waits for a cold read of millions of views. The README's advice
+ * Fills the cache the Stats page reads, for every period it links to, and the
+ * front page's shared panels and recommendations, so no visitor waits for a
+ * cold read of millions of views. The README's advice
  * for heavy reports: compute them outside the request.
  *
  * It stands aside when warming would hurt more than it helps: while
@@ -24,15 +29,33 @@ class WarmStats extends Command
 {
     protected $signature = 'demo:warm {--force : Warm even while maintenance runs or nothing is folded}';
 
-    protected $description = 'Compute the Stats page for every period ahead of its visitors';
+    protected $description = 'Compute the Stats page and the front page ahead of their visitors';
 
-    public function handle(StatsController $stats): int
+    public function handle(StatsController $stats, FrontPage $front): int
     {
         if (! $this->option('force') && ($reason = $this->standAside()) !== null) {
             $this->components->info("Not warming: {$reason}");
 
             return self::SUCCESS;
         }
+
+        $started = microtime(true);
+        $front->refreshShared();
+        $this->components->twoColumnDetail('front page panels', round((microtime(true) - $started) * 1_000).' ms');
+
+        // Recommendations are per reader: queue them for the readers seen
+        // in the last day, so their next front page has a fresh list.
+        $readers = View::query()
+            ->where('viewer_type', (new User)->getMorphClass())
+            ->where('viewed_at', '>=', now()->subDay())
+            ->distinct()
+            ->pluck('viewer_id');
+
+        foreach ($readers as $reader) {
+            ComputeRecommendations::dispatch((int) $reader, null);
+        }
+
+        $this->components->twoColumnDetail('recommendations queued for active readers', (string) $readers->count());
 
         foreach (['post', 'episode'] as $type) {
             foreach (array_keys(StatsController::PERIODS) as $key) {
