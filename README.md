@@ -8,6 +8,58 @@ names the package call it makes.
 The app runs Laravel 13 on PHP 8.5 and requires the package from a local checkout of the unreleased `9.x` branch, so a
 change to the package shows up in the demo on the next request.
 
+## Screenshots
+
+**Front page.** A hot score from a counter column, trending, most read across types, rising, readers right now, and
+recommendations with the reason for each.
+
+![The front page](docs/screenshots/home.png)
+
+**An article.** The receipt of `attempt()`: recorded or skipped, by which guard, and the dimensions resolved from the
+request. Next to it, readers right now from a heartbeat, the last 30 days and where readers came from.
+
+![An article with its recording receipt](docs/screenshots/article.png)
+
+**Stats.** Views, unique and returning visitors compared with the period before, a chart per interval, rankings across
+types, and a split by every dimension, all from a `Period` in the URL.
+
+![The stats dashboard](docs/screenshots/stats.png)
+
+**Trending, five ways.** The same views ranked under exponential, linear, window and a custom decay curve.
+
+![Trending under five decay curves](docs/screenshots/stats-trending.png)
+
+**One article's stats.** Weekly and hourly series, sources, referring hosts, countries and devices, visits per visitor,
+the last hour against past weeks, a custom rollup per newsletter campaign, counter columns next to fresh counts, and
+milestone and spike state.
+
+![The stats of one article](docs/screenshots/post-stats.png)
+
+**Recording lab.** A made-up visitor sent through every guard: crawlers, ignored addresses, opted-out readers, cooldowns
+and a burst, each with the reason it was refused.
+
+![The recording lab](docs/screenshots/lab.png)
+
+**Console.** The maintenance commands, run in the background with their output and a diff of the tables, next to the
+simulations and the events the package dispatched.
+
+![The maintenance console](docs/screenshots/console.png)
+
+**A reader's account.** Reading history, recommendations as a list and as a query scope, unread articles, and the
+opt-out, export, anonymise and forget controls.
+
+![A reader's account page](docs/screenshots/account.png)
+
+**Article lists.** Each sort is a scope or a counter column.
+
+![Articles sorted by views this week](docs/screenshots/articles.png)
+
+**A podcast episode.** Recorded by the route middleware, with plays in their own collection, written through the queue.
+
+![A podcast episode](docs/screenshots/episode.png)
+
+The screenshots come from `scripts/screenshots/capture.mjs`, which drives headless Chromium against the running demo.
+
 ## Getting started
 
 Clone the package next to this app and check out `9.x`:
