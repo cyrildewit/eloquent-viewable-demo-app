@@ -114,7 +114,7 @@
             </p>
             @php($meter = app(\App\Demo\QueryMeter::class))
             <p class="font-mono text-[0.7rem] tabular" title="Every query of this request, counted by App\Demo\QueryMeter">
-                {{ $meter->queries }} {{ Str::plural('query', $meter->queries) }} · {{ Number::format($meter->milliseconds, maxPrecision: 1) }} ms in the database · {{ Number::format((microtime(true) - (defined('LARAVEL_START') ? LARAVEL_START : request()->server('REQUEST_TIME_FLOAT', microtime(true)))) * 1000, maxPrecision: 0) }} ms in total
+                {{ $meter->queries }} {{ Str::plural('query', $meter->queries) }} · {{ Number::format($meter->milliseconds, maxPrecision: 1) }} ms in the database · {{ Number::format((microtime(true) - (defined('LARAVEL_START') ? LARAVEL_START : request()->server('REQUEST_TIME_FLOAT', microtime(true)))) * 1000, maxPrecision: 0) }} ms in total{{ app()->bound(\Fruitcake\LaravelDebugbar\LaravelDebugbar::class) && app(\Fruitcake\LaravelDebugbar\LaravelDebugbar::class)->isEnabled() ? ', with Debugbar collecting (DEBUGBAR_ENABLED=false for honest timings)' : '' }}
             </p>
             <div class="flex flex-wrap gap-1.5">
                 @foreach ($switches as $label => $value)
