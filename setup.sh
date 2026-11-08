@@ -1,50 +1,51 @@
 #!/bin/bash
+#
+# Builds and starts the Inkwell demo for Eloquent Viewable 9.x.
+#
+# Expects the package checked out next to this app, at ../eloquent-viewable,
+# on the 9.x branch, and an external `traefik-gateway` network with Traefik
+# serving *.localhost (see the README).
 
-function printline {
-    echo $1;
+set -e
+
+function step {
+    echo "==[ $1"
 }
 
-function setupEnvFile() {
-    if ! [ -f ".env" ];
-    then
-        ENVIRONMENT_FILE=".env.docker";
-        printline "==[ Copying $ENVIRONMENT_FILE to .env"
-        cp $ENVIRONMENT_FILE .env
-
-        printline "==[ Install composer"
-        runScript composer install
-
-        printline "==[ Generating new app key"
-        runScript php artisan key:generate
-
-        printline "==[ Run migrations"
-        runScript php artisan migrate
-
-        printline "==[ Create storage link"
-        runScript php artisan storage:link
-    fi
+function run {
+    docker exec -it evd-php "$@"
 }
 
-function runScript {
-    docker exec -it evd-php "$@";
-}
+if [ ! -d "../eloquent-viewable" ]; then
+    echo "The package is not at ../eloquent-viewable. Clone it there and check out the 9.x branch:"
+    echo "  git clone https://github.com/cyrildewit/eloquent-viewable.git ../eloquent-viewable && git -C ../eloquent-viewable checkout 9.x"
+    exit 1
+fi
 
-printline "==[ DOCKER INIT ]==";
-docker-compose --env-file .env.docker up -d
+if [ ! -f ".env" ]; then
+    step "Copying .env.docker to .env"
+    cp .env.docker .env
+fi
 
-setupEnvFile;
+step "Starting the containers"
+docker compose --env-file .env.docker up -d --build
 
-printline "==[ All checks are passed, starting with the setup"
+step "Installing Composer packages (the package is symlinked from ../eloquent-viewable)"
+run composer install
 
-printline "==[ Setting permissions for html directory"
-runScript chown -R www-data:www-data /var/www/html
+if ! grep -q '^APP_KEY=base64' .env; then
+    step "Generating an app key"
+    run php artisan key:generate
+fi
 
-printline "==[ Install composer"
-runScript composer install
+step "Building the frontend"
+run npm install --no-audit --no-fund
+run npm run build
 
-printline "==[ Run migrations"
-runScript php artisan migrate
+step "Migrating and simulating two years of traffic"
+run php artisan demo:reset
 
-printline "==[ Run NPM"
-runScript npm install
-runScript npm run dev
+step "Restarting Horizon and the scheduler so they pick up the code"
+docker compose --env-file .env.docker restart horizon scheduler
+
+step "Done: https://eloquent-viewable-demo.localhost/tour"

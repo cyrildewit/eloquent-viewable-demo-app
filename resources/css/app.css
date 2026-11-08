@@ -1,0 +1,108 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../views';
+@source '../../app';
+
+@theme {
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+    --font-serif: 'Fraunces', ui-serif, Georgia, Cambria, 'Times New Roman', serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+    --color-paper: oklch(0.985 0.006 85);
+    --color-ink: oklch(0.22 0.02 265);
+    --color-accent: oklch(0.55 0.2 275);
+    --color-accent-soft: oklch(0.95 0.035 275);
+}
+
+@layer base {
+    html {
+        -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+        @apply bg-paper text-ink font-sans;
+    }
+
+    ::selection {
+        @apply bg-accent text-white;
+    }
+}
+
+@layer components {
+    .panel {
+        @apply rounded-2xl border border-stone-200/80 bg-white shadow-[0_1px_2px_rgb(0_0_0/0.04)];
+    }
+
+    .panel-head {
+        @apply flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-stone-100 px-5 py-3.5;
+    }
+
+    .panel-title {
+        @apply text-[0.95rem] font-semibold tracking-tight text-ink;
+    }
+
+    .call {
+        @apply block max-w-full overflow-x-auto whitespace-nowrap font-mono text-[0.7rem] leading-relaxed text-stone-500;
+        /* JetBrains Mono draws -> as an arrow, which is not what PHP code looks like. */
+        font-variant-ligatures: none;
+    }
+
+    code, pre {
+        font-variant-ligatures: none;
+    }
+
+    .call .fn {
+        @apply text-accent;
+    }
+
+    .eyebrow {
+        @apply text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-stone-500;
+    }
+
+    .btn {
+        @apply inline-flex items-center justify-center gap-2 rounded-full border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-ink transition hover:border-stone-400 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50;
+    }
+
+    .btn-primary {
+        @apply border-transparent bg-ink text-white hover:bg-ink/90 hover:border-transparent;
+    }
+
+    .btn-accent {
+        @apply border-transparent bg-accent text-white hover:bg-accent/90 hover:border-transparent;
+    }
+
+    .btn-sm {
+        @apply px-3 py-1.5 text-xs;
+    }
+
+    .chip {
+        @apply inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-2.5 py-0.5 text-xs font-medium text-stone-600;
+    }
+
+    .input {
+        @apply w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-ink shadow-xs outline-none transition focus:border-accent focus:ring-3 focus:ring-accent/15;
+    }
+
+    .label {
+        @apply mb-1 block text-xs font-medium text-stone-600;
+    }
+
+    .prose-ink p {
+        @apply mb-5 text-[1.075rem] leading-[1.8] text-stone-700;
+    }
+
+    .tabular {
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+@keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.45; transform: scale(0.8); }
+}
+
+.live-dot {
+    animation: pulse-dot 1.8s ease-in-out infinite;
+}
