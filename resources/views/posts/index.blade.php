@@ -33,9 +33,9 @@
                                 @switch($sort)
                                     @case('trending') score {{ Number::format($post->trending_score, maxPrecision: 1) }} @break
                                     @case('hot') hot {{ Number::format($post->hot_score, maxPrecision: 0) }} @break
-                                    @case('week') {{ Number::format($post->week_views) }} this week @break
-                                    @case('google') {{ Number::format($post->google_views) }} from Google @break
-                                    @case('club') {{ Number::format($post->views_count) }} views @break
+                                    @case('week') {{ Number::format($post->views_last_week) }} this week @break
+                                    @case('live') {{ Number::format($post->week_views) }} this week, live @break
+                                    @case('google') {{ Number::format($post->google_views_30d) }} from Google @break
                                     @default {{ Number::format($post->total_views) }} views
                                 @endswitch
                             </span>
@@ -56,7 +56,7 @@
         <p class="mt-6 text-xs text-stone-500">
             The per-card “last 7 days” numbers come from one query for the page:
             <x-call class="!inline" code="Views::forViewables($posts)->period(Period::pastDays(7))->counts()" />.
-            “Views” and “unique” are counter columns written by <code class="font-mono">views:recount</code>.
+            “Views” and “unique” are counter columns written by <code class="font-mono">views:recount</code>, as are the “this week”, “Google” and “1,000+” sorts. “This week, counted live” runs the scope on every request instead: compare the cost in the footer.
         </p>
     </div>
 </x-layout>

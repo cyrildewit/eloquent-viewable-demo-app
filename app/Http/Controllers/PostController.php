@@ -23,11 +23,12 @@ class PostController extends Controller
         'latest' => ['Latest', "Post::published()->latest('published_at')"],
         'hot' => ['Hot', 'Post::orderByHot()'],
         'trending' => ['Trending', 'Post::orderByTrending()->withTrendingScore()'],
-        'week' => ['Most read this week', "Post::orderByViews('desc', Period::pastDays(7))"],
+        'week' => ['Most read this week', "Post::orderByDesc('views_last_week') // counter column"],
         'popular' => ['All-time', "Post::orderByDesc('total_views') // counter column"],
-        'google' => ['Popular on Google', "Post::orderByViews(period: Period::pastDays(30), dimensions: ['source' => 'Google'])"],
-        'club' => ['1,000+ club', "Post::whereViewsCount('>=', 1000)->orderByViews()"],
+        'google' => ['Popular on Google', "Post::orderByDesc('google_views_30d') // counter column"],
+        'club' => ['1,000+ club', "Post::where('total_views', '>=', 1000)->orderByDesc('total_views') // counter column"],
         'unread' => ['Not opened yet', 'Post::whereNotViewedBy($user)'],
+        'live' => ['This week, counted live', "Post::orderByViews('desc', Period::pastDays(7)) // a subquery per post, slow on a large table"],
     ];
 
     public function index(Request $request, Visitor $visitor): View
@@ -40,10 +41,14 @@ class PostController extends Controller
             'latest' => $query->latest('published_at'),
             'hot' => $query->orderByHot(),
             'trending' => $query->orderByTrending()->withTrendingScore(),
-            'week' => $query->orderByViews('desc', Period::pastDays(7), as: 'week_views'),
+            // Counter columns: views:recount writes them, so sorting is a plain
+            // indexed column, as fresh as the last recount.
+            'week' => $query->orderByDesc('views_last_week'),
             'popular' => $query->orderByDesc('total_views'),
-            'google' => $query->orderByViews(period: Period::pastDays(30), as: 'google_views', dimensions: ['source' => 'Google']),
-            'club' => $query->whereViewsCount('>=', 1000)->orderByViews(),
+            'google' => $query->orderByDesc('google_views_30d'),
+            'club' => $query->where('total_views', '>=', 1_000)->orderByDesc('total_views'),
+            // The same list counted on every request, to compare with `week`.
+            'live' => $query->orderByViews('desc', Period::pastDays(7), as: 'week_views'),
             'unread' => $request->user()
                 ? $query->whereNotViewedBy($request->user())->latest('published_at')
                 : $query->whereNotViewedByVisitor($visitor->id())->latest('published_at'),
@@ -73,7 +78,9 @@ class PostController extends Controller
         return view('posts.show', [
             'post' => $post->load('author'),
             'result' => $result,
-            'total' => views($post)->count(),
+            // Counting a million views on every visit is the expensive call of
+            // this page; a minute old is fresh enough for a byline.
+            'total' => views($post)->remember(1)->count(),
             'unique' => views($post)->unique()->period(Period::pastDays(30))->remember(5)->count(),
             'week' => views($post)->period(Period::pastDays(7))->remember(5)->compare(),
             'series' => views($post)->period(Period::pastDays(30))->remember(5)->countByDay(),
