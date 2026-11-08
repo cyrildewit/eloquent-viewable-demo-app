@@ -21,6 +21,9 @@ class StatsController extends Controller
 {
     public const array PERIODS = ['24h' => 'Last 24 hours', '7d' => '7 days', '30d' => '30 days', '3m' => '3 months', '1y' => '1 year', '2y' => '2 years'];
 
+    /** Minutes a stats read is remembered. demo:warm refreshes them more often. */
+    public const int CacheMinutes = 15;
+
     public const array TIMEZONES = ['UTC', 'Europe/Amsterdam', 'America/New_York', 'Asia/Tokyo', 'Australia/Sydney'];
 
     /**
@@ -32,15 +35,31 @@ class StatsController extends Controller
     {
         $period ??= Period::parse('30d');
         $type = in_array($request->query('type'), ['post', 'episode'], true) ? $request->query('type') : 'post';
-        $model = $type === 'post' ? Post::class : Episode::class;
         $timezone = in_array($request->query('tz'), self::TIMEZONES, true) ? $request->query('tz') : 'UTC';
 
-        $views = fn () => views($model)->period($period)->timezone($timezone)->remember(60);
+        return view('stats.index', [
+            ...$this->report($period, $type, $timezone),
+            'live' => rescue(fn () => ['count' => Views::live()->count(), 'top' => Views::live()->top(6)], null, false),
+        ]);
+    }
+
+    /**
+     * Everything the page shows but the live panel, each read remembered for
+     * CacheMinutes. demo:warm calls this on a schedule for the periods in
+     * PERIODS, so a visitor finds the answers in the cache.
+     *
+     * @return array<string, mixed>
+     */
+    public function report(Period $period, string $type, string $timezone = 'UTC'): array
+    {
+        $model = $type === 'post' ? Post::class : Episode::class;
+
+        $views = fn () => views($model)->period($period)->timezone($timezone)->remember(self::CacheMinutes);
 
         $granularity = $this->granularity($period);
         $lastHour = Period::create(now()->subHour()->startOfHour(), now()->startOfHour());
 
-        return view('stats.index', [
+        return [
             'period' => $period,
             'periodKey' => $period->getRouteKey(),
             'type' => $type,
@@ -59,7 +78,7 @@ class StatsController extends Controller
                 ->mapWithKeys(fn (string $dimension) => [$dimension => Answer::of(fn () => $views()->countBy($dimension, limit: 6))]),
             'googleMobile' => Answer::of(fn () => $views()->whereDimension('source', 'Google')->whereDimension('device', 'mobile')->count()),
 
-            'crossType' => Views::period($period)->remember(60)->top(5),
+            'crossType' => Views::period($period)->remember(self::CacheMinutes)->top(5),
             'rising' => views($model)->period(Period::pastDays(1))->remember(10)->rising(5, minimum: 5),
             'spikes' => views($model)->period($lastHour)->remember(10)->anomalies(threshold: 2.5, minimum: 3, limit: 5),
             'drops' => views($model)->period($lastHour)->remember(10)->anomalies(threshold: -2.5, minimum: 3, limit: 5),
@@ -73,8 +92,7 @@ class StatsController extends Controller
                 'Plateau: 6 hours flat, then halves daily' => ['->trending(5, curve: app(PlateauDecay::class))', views($model)->remember(10)->trending(5, curve: app(PlateauDecay::class))],
             ],
 
-            'live' => rescue(fn () => ['count' => Views::live()->count(), 'top' => Views::live()->top(6)], null, false),
-        ]);
+        ];
     }
 
     /**

@@ -43,6 +43,14 @@ Schedule::command('views:flush')
     ->withoutOverlapping()
     ->when(fn (): bool => config('eloquent-viewable.recording.store.driver') === 'redis');
 
+// Keep the Stats page's cache filled, so no visitor waits for a cold read.
+// Read-only, so it runs without the autopilot. Each read is remembered for
+// 15 minutes; a run only recomputes what expired or was forgotten.
+Schedule::command('demo:warm')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->runInBackground();
+
 // Horizon's throughput and runtime graphs are built from these snapshots.
 Schedule::command('horizon:snapshot')->everyFiveMinutes();
 
